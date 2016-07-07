@@ -9,16 +9,20 @@ package com.cmrl.maintenance;
  */
 
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.android.volley.RequestQueue;
 import com.android.volley.Response;
+import com.android.volley.VolleyError;
 import com.android.volley.toolbox.Volley;
 
 import org.json.JSONException;
@@ -36,10 +40,17 @@ public class UserActivity extends AppCompatActivity {
 
         final EditText etUsername = (EditText) findViewById(R.id.etUsername);
         final EditText etPassword = (EditText) findViewById(R.id.etPassword);
-        final TextView tvAssetcode = (TextView) findViewById(R.id.tvAssetcode);
+        final Button tvAssetcode = (Button) findViewById(R.id.tvAssetcode);
         final TextView tvLatitude = (TextView) findViewById(R.id.tvLatitude);
         final TextView tvLongitude = (TextView) findViewById(R.id.tvLongitude);
         final Button btLogin = (Button) findViewById(R.id.btLogin);
+        Button btLocation = (Button) findViewById(R.id.btLocation);
+
+        // Remove following block from comments for CMRL Lite
+        /*assert tvAssetcode != null;
+        tvAssetcode.setVisibility(View.GONE);
+        assert btLocation != null;
+        btLocation.setVisibility(View.GONE);*/
 
         // Save values from predecessor
         Intent intent = getIntent();
@@ -49,6 +60,7 @@ public class UserActivity extends AppCompatActivity {
         tvLongitude.setText("Longitude: " + longitude);
 
         // User can go Asset Decipher instead
+        assert tvAssetcode != null;
         tvAssetcode.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -60,51 +72,85 @@ public class UserActivity extends AppCompatActivity {
         });
 
         // Start Login. JSON Request and Response
+        assert btLogin != null;
         btLogin.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                // Hide keyboard
+                InputMethodManager inputManager = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+                inputManager.hideSoftInputFromWindow(getCurrentFocus().getWindowToken(),InputMethodManager.HIDE_NOT_ALWAYS);
                 // Store Username/Password
                 final String username = etUsername.getText().toString();
                 final String password = etPassword.getText().toString();
-                // Response received from the server
-                Response.Listener<String> responseListener = new Response.Listener<String>() {
-                    @Override
-                    public void onResponse(String response) {
-                        try {
-                            JSONObject jsonResponse = new JSONObject(response);
-                            //Log.i("value", jsonResponse.toString());
-                            boolean success = jsonResponse.getJSONObject("data").getBoolean("success");
-                            String userid = jsonResponse.getJSONObject("data").getString("id");
-                            String organisation = jsonResponse.getJSONObject("data").getString("organisation");
-                            String auth_key = jsonResponse.getJSONObject("data").getString("auth_key");
-                            //Log.i("value",  "success: " + String.valueOf(success) + ", auth_key: "+ auth_key);
 
-                            if (success) {
-                                SaveData.ORGANISATION = organisation;
-                                SaveData.USER_ID = userid;
-                                //Pass to successor program
-                                Intent intent = new Intent(UserActivity.this, AssetMaintActivity.class);
-                                intent.putExtra("auth_key", auth_key);
-                                UserActivity.this.startActivity(intent);
-                            } else {
+                if (username.equals("")||password.equals(""))
+                    Toast.makeText(getApplicationContext(),"Enter all Credentials!",Toast.LENGTH_SHORT).show();
+                else {
+                    // Response received from the server
+                    Response.Listener<String> responseListener = new Response.Listener<String>() {
+                        @Override
+                        public void onResponse(String response) {
+                            boolean success = false;
+                            try {
+                                JSONObject jsonResponse = new JSONObject(response);
+                                //Log.i("value", jsonResponse.toString());
+                                success = jsonResponse.getJSONObject("data").getBoolean("success");
+                                String userid = jsonResponse.getJSONObject("data").getString("id");
+                                String organisation = jsonResponse.getJSONObject("data").getString("organisation");
+                                String auth_key = jsonResponse.getJSONObject("data").getString("auth_key");
+                                //Log.i("value",  "success: " + String.valueOf(success) + ", auth_key: "+ auth_key);
+
+                                if (success) {
+                                    SaveData.ORGANISATION = organisation;
+                                    SaveData.USER_ID = userid;
+                                    //Pass to successor program
+                                    Intent intent = new Intent(UserActivity.this, AssetMaintActivity.class);
+                                    intent.putExtra("auth_key", auth_key);
+                                    UserActivity.this.startActivity(intent);
+                                } /*else {
+                                    AlertDialog.Builder builder = new AlertDialog.Builder(UserActivity.this);
+                                    builder.setMessage("Login Failed")
+                                            .setNegativeButton("Retry", null)
+                                            .create()
+                                            .show();
+                                }*/
+                            } catch (JSONException e) {
+                                e.printStackTrace();
+                            }
+                            if(!success) {
                                 AlertDialog.Builder builder = new AlertDialog.Builder(UserActivity.this);
                                 builder.setMessage("Login Failed")
                                         .setNegativeButton("Retry", null)
                                         .create()
                                         .show();
                             }
-                        } catch (JSONException e) {
-                            e.printStackTrace();
                         }
-                    }
-                };
-                // Volley Request
-                UserLoginRequest loginRequest = new UserLoginRequest(username, password, latitude, longitude, responseListener);
-                RequestQueue queue = Volley.newRequestQueue(UserActivity.this);
-                queue.add(loginRequest);
-                //Log.i("values", "username: "+username+"/"+password+" location: "+latitude+"/"+longitude );
+                    };
+
+                    Response.ErrorListener errorListener = new Response.ErrorListener() {
+                        @Override
+                        public void onErrorResponse(VolleyError error) {
+                            //Log.i("Volley", "Error");
+                        }
+                    };
+                    // Volley Request
+                    UserLoginRequest loginRequest = new UserLoginRequest(username, password, latitude, longitude,
+                                responseListener, errorListener);
+                    RequestQueue queue = Volley.newRequestQueue(UserActivity.this);
+                    queue.add(loginRequest);
+                    //Log.i("values", "username: "+username+"/"+password+" location: "+latitude+"/"+longitude );
+                }
             }
         });
+
+        /*assert btLocation != null;
+        btLocation.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent locIntent = new Intent(UserActivity.this,ViewLocationActivity.class);
+                startActivity(locIntent);
+            }
+        });*/
     }
 }
 

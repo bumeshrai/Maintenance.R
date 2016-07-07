@@ -45,6 +45,7 @@ public class AssetDecipherActivity extends AppCompatActivity {
         longitude = intent.getStringExtra("longitude");
 
         // User wants to Login instead
+        assert tvLogin != null;
         tvLogin.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -52,10 +53,12 @@ public class AssetDecipherActivity extends AppCompatActivity {
                 userIntent.putExtra("latitude", latitude); // Saved values returned
                 userIntent.putExtra("longitude", longitude);
                 AssetDecipherActivity.this.startActivity(userIntent);
+                finish();
             }
         });
 
         // Start Decipher. JSON Request and Response
+        assert btDecipher != null;
         btDecipher.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {

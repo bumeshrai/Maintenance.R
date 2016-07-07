@@ -41,7 +41,7 @@ public class FetchData {
             parameter = keys.next();
             infoRead ="";
             try {
-            infoRead = jsonResponse.getString(parameter);
+                infoRead = jsonResponse.getString(parameter);
             } catch (JSONException e) {
                 e.printStackTrace();
             }

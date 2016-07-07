@@ -16,9 +16,10 @@ public class UserLoginRequest  extends StringRequest {
     private static final String LOGIN_REQUEST_URL = "http://cmrlvent.co.in/assetMaint/api/web/user/login";
     private Map<String, String> params;
 
-    public UserLoginRequest(String username, String password,  String latitude, String longitude ,Response.Listener<String> listener) {
+    public UserLoginRequest(String username, String password,  String latitude, String longitude,
+                            Response.Listener<String> listener, Response.ErrorListener errorListener) {
         // Request Post and pass on URL
-        super(Request.Method.POST, LOGIN_REQUEST_URL, listener, null);
+        super(Request.Method.POST, LOGIN_REQUEST_URL, listener, errorListener);
         //POST Array
         params = new HashMap<>();
         params.put("username", username);

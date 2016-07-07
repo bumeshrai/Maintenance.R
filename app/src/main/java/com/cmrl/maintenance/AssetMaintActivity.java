@@ -2,13 +2,16 @@ package com.cmrl.maintenance;
 
 import google.zxing.integration.android.IntentIntegrator;
 import google.zxing.integration.android.IntentResult;
+
+import android.content.Context;
 import android.content.Intent;
 import android.content.res.Configuration;
-import android.content.Context;
 import android.net.ConnectivityManager;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
+import android.view.MotionEvent;
+import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import android.widget.Toast;
 
@@ -35,7 +38,7 @@ public class AssetMaintActivity extends AppCompatActivity {
     String auth_key,equipment;
     Response.Listener<String> responseListener, responseListenerforAsset;
     Response.ErrorListener errorListener;
-    Boolean SCANNED = false;
+
     String assetMaintURL = "maintenance-next-dues/?assetCode=";
     String assetDecipherURL = "asset-code/decipher?assetCode=";
 
@@ -45,6 +48,7 @@ public class AssetMaintActivity extends AppCompatActivity {
 
         SaveData.checkedList.clear();
         SaveData.editTextList.clear();
+        SaveData.FREQ_ID = "";
 
         Intent intent = getIntent();
         auth_key = intent.getStringExtra("auth_key");
@@ -55,23 +59,25 @@ public class AssetMaintActivity extends AppCompatActivity {
 
         //Starting the ZXing Scanner
         IntentIntegrator scanIntegrator = new IntentIntegrator(this);
-        if(!SCANNED) {
-            scanIntegrator.initiateScan();
-            Log.i("value1", "starting scanner");
-        }
+        scanIntegrator.initiateScan();
+        //Log.i("value1", "starting scanner");
 
         responseListener = new Response.Listener<String>() {
             @Override
             public void onResponse(String response) {
                 try {
                     JSONObject jsonResponse = new JSONObject(response);
-                    Log.i("value1", "Response: "+jsonResponse.toString());
-                    jsonResponse = jsonResponse.getJSONObject("data");
-                    SaveData.FREQ_ID = jsonResponse.getString("freq_id");
-                    Log.i("value1","FREQ ID: "+ SaveData.FREQ_ID);
+                    //Log.i("value1", "Response: "+jsonResponse.toString());
+                    JSONObject dataResponse = jsonResponse.getJSONObject("data");
+                    //Log.i("value", "Response: " + dataResponse.toString());
+                    SaveData.FREQ_ID = dataResponse.getString("freq_id");
+                    //Log.i("value1","FREQ ID: "+ SaveData.FREQ_ID);
+
+                    //if(dataResponse.toString().equals("null"))
+
 
                     FetchData fetchData = new FetchData(AssetMaintActivity.this);
-                    Map<String, String> param = fetchData.getApiParam(jsonResponse);
+                    Map<String, String> param = fetchData.getApiParam(dataResponse);
                     //Log.i("value1", "Response: " + param);
 
                     String[][] createdViews = fetchData.createViews(param, linearLayout);
@@ -81,9 +87,10 @@ public class AssetMaintActivity extends AppCompatActivity {
                 } catch (JSONException e) {
                     e.printStackTrace();
                 }
+                if(SaveData.FREQ_ID.equals(""))
+                    Toast.makeText(AssetMaintActivity.this, "No maintenance Due", Toast.LENGTH_LONG).show();
             }
         };
-        
         responseListenerforAsset = new Response.Listener<String>() {
 
             @Override
@@ -91,9 +98,10 @@ public class AssetMaintActivity extends AppCompatActivity {
                 try{
                     JSONObject jsonAssetResponse = new JSONObject(response);
                     equipment = jsonAssetResponse.getJSONObject("data").getString("equipment");
-                    Log.i("value1",jsonAssetResponse.toString());
-                    Log.i("value1","EQUIPMENT: " +equipment);
-                    AssetMaintActivity.this.getSupportActionBar().setTitle(equipment);
+                    //Log.i("value1",jsonAssetResponse.toString());
+                    //Log.i("value1","EQUIPMENT: " +equipment);
+                    if(!(AssetMaintActivity.this.getSupportActionBar() == null))
+                        AssetMaintActivity.this.getSupportActionBar().setTitle(equipment);
                     SaveData.EQUIPMENT = equipment;
 
                 }catch (JSONException e){
@@ -106,24 +114,24 @@ public class AssetMaintActivity extends AppCompatActivity {
             @Override
             public void onErrorResponse(VolleyError error) {
                 if( error instanceof TimeoutError) {
-                    Log.i("Volley","Error: TimeoutError  " + error.toString());
+                    //Log.i("Volley","Error: TimeoutError  " + error.toString());
                 } else if( error instanceof ServerError) {
-                    Log.i("Volley","Error: Server Error " + error.getMessage());
+                    //Log.i("Volley","Error: Server Error " + error.getMessage());
                 } else if( error instanceof AuthFailureError) {
-                    Log.i("Volley","Error: Auth Failure Error " + error.getMessage());
+                    //Log.i("Volley","Error: Auth Failure Error " + error.getMessage());
                 } else if( error instanceof ParseError) {
-                    Log.i("Volley","Error: Parse Error " + error.getMessage());
+                    //Log.i("Volley","Error: Parse Error " + error.getMessage());
                 } else if( error instanceof NoConnectionError) {
-                    Log.i("Volley","Error: No Connection Error " + error.getMessage());
+                    //Log.i("Volley","Error: No Connection Error " + error.getMessage());
                 } else if( error instanceof NetworkError) {
-                    Log.i("Volley","Error: NetworkError " + error.getMessage());
+                    //Log.i("Volley","Error: NetworkError " + error.getMessage());
                 }
 
             }
         };
 
+
     }
-    
     @Override
     public void onConfigurationChanged(Configuration newConfig) {
         super.onConfigurationChanged(newConfig);
@@ -132,35 +140,30 @@ public class AssetMaintActivity extends AppCompatActivity {
     //Fetch Data from URL once the QRCode is scanned
     public void onActivityResult(int requestCode, int resultCode, Intent intent) {
         IntentResult scanningResult = IntentIntegrator.parseActivityResult(requestCode, resultCode, intent);
-        Log.i("value1", "Scanning done");
-        
-        // Loop for network
-        if (!isNetworkAvailable(AssetMaintActivity.this)) {
+        //Log.i("value1", "Scanning done");
+        // Loop for network availability
+        /*if (!isNetworkAvailable(AssetMaintActivity.this)) {
             while(true){
                 Log.i("Volley", "Network Not Available");
                 if (isNetworkAvailable(AssetMaintActivity.this)) break;
             }
-        }
+        }*/
         Log.i("Volley", "Network Available");
 
         if (scanningResult != null) {
             // Volley Request
-            SCANNED = true;
-            Log.i("value1",String.valueOf(SCANNED));
             SaveData.ASSET_CODE = scanningResult.getContents();
 
             assetMaintURL += SaveData.ASSET_CODE + "&token=" + auth_key;
             assetDecipherURL += SaveData.ASSET_CODE;
 
-            AssetMaintRequest decipherRequest = new AssetMaintRequest(assetDecipherURL, 
-                                                            responseListenerforAsset, errorListener);
+            AssetMaintRequest decipherRequest = new AssetMaintRequest(assetDecipherURL, responseListenerforAsset,errorListener);
             RequestQueue queue = Volley.newRequestQueue(AssetMaintActivity.this);
-            Log.i("value1","AssetDecipher req");
+            //Log.i("value1","AssetDecipher req");
             queue.add(decipherRequest);
 
-            AssetMaintRequest maintRequest = new AssetMaintRequest(assetMaintURL, 
-                                                            responseListener, errorListener);
-            Log.i("value1","AssetMAint req");
+            AssetMaintRequest maintRequest = new AssetMaintRequest(assetMaintURL, responseListener, errorListener);
+            //Log.i("value1","AssetMaint req");
             queue.add(maintRequest);
 
         }
@@ -175,5 +178,5 @@ public class AssetMaintActivity extends AppCompatActivity {
         final ConnectivityManager connectivityManager = ((ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE));
         return connectivityManager.getActiveNetworkInfo() != null && connectivityManager.getActiveNetworkInfo().isConnected();
     }
-}
 
+}
